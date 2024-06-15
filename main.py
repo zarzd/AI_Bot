@@ -51,7 +51,6 @@ async def voice_to_text(file_path):
 
 async def get_answer_from_openai(text, my_thread, my_assistant):
     try:
-
         message = openai.beta.threads.messages.create(
             thread_id=my_thread.id,
             role="user",
@@ -71,7 +70,6 @@ async def get_answer_from_openai(text, my_thread, my_assistant):
             elif run_status.status == "failed":
                 logging.error("Run failed: %s", run_status.last_error)
                 raise RuntimeError("OpenAI run failed")
-            # await asyncio.sleep(1)
 
         messages = openai.beta.threads.messages.list(
             thread_id=my_thread.id
@@ -111,7 +109,6 @@ async def process_and_reply(message, text):
         await message.reply("Sorry, an error occurred while processing your message.")
 
 
-@dp.message(F.voice)
 async def handle_voice_message(message: types.Message):
     # downloading a file from the Telegram server
     try:
@@ -129,13 +126,39 @@ async def handle_voice_message(message: types.Message):
         await message.reply("Sorry, an error occurred while processing your voice message.")
 
 
-@dp.message()
 async def handle_message(message: types.Message):
     await process_and_reply(message, message.text)
 
 
+queue = asyncio.Queue()
+
+
+@dp.message(F.voice)
+async def queue_voice_message(message: types.Message):
+    await queue.put(handle_voice_message(message))
+
+
+@dp.message()
+async def queue_text_message(message: types.Message):
+    await queue.put(handle_message(message))
+
+
+async def worker():
+    while True:
+        task = await queue.get()
+        try:
+            await task
+        except Exception as e:
+            logging.error(f"Error processing message: {e}")
+        finally:
+            queue.task_done()
+
+
 async def main():
+    worker_task = asyncio.create_task(worker())
     await dp.start_polling(bot)
+    await queue.join()
+    worker_task.cancel()
 
 
 if __name__ == "__main__":
