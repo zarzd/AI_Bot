@@ -94,19 +94,15 @@ async def text_to_speech(text, output_file_path):
 
 
 async def process_and_reply(message, text):
-    try:
-        answer = await get_answer_from_openai(text, thread, assistant)
-        # await message.reply(answer) # bot message output
+    answer = await get_answer_from_openai(text, thread, assistant)
+    # await message.reply(answer) # bot message output
 
-        output_voice_path = Path(__file__).parent / f"speech_{message.message_id}.ogg"
-        files_to_cleanup.add(str(output_voice_path))
-        await text_to_speech(answer, output_voice_path)
+    output_voice_path = Path(__file__).parent / f"speech_{message.message_id}.ogg"
+    files_to_cleanup.add(str(output_voice_path))
+    await text_to_speech(answer, output_voice_path)
 
-        voice = FSInputFile(output_voice_path)
-        await message.reply_voice(voice)
-    except Exception as e:
-        logging.error(e)
-        await message.reply("Sorry, an error occurred while processing your message.")
+    voice = FSInputFile(output_voice_path)
+    await message.reply_voice(voice)
 
 
 async def handle_voice_message(message: types.Message):
@@ -127,7 +123,11 @@ async def handle_voice_message(message: types.Message):
 
 
 async def handle_message(message: types.Message):
-    await process_and_reply(message, message.text)
+    try:
+        await process_and_reply(message, message.text)
+    except Exception as e:
+        logging.error(e)
+        await message.reply("Sorry, an error occurred while processing your message.")
 
 
 queue = asyncio.Queue()
