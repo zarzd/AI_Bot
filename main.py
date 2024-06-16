@@ -106,8 +106,8 @@ async def process_and_reply(message, text):
 
 
 async def handle_voice_message(message: types.Message):
-    # downloading a file from the Telegram server
     try:
+        # downloading a file from the Telegram server
         file_id = message.voice.file_id
         file = await bot.get_file(file_id, request_timeout=120)
         file_path = file.file_path
